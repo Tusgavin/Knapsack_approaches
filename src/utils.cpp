@@ -18,8 +18,8 @@ void open_and_extract_file_info(
    FILE >> read_buffer;
    *maximum_capacity = ::atof(read_buffer.c_str());
 
-   int value;
-   int weight;
+   double value;
+   double weight;
    for (int i = 0; i < *amount_of_items; ++i)
    {
       FILE >> read_buffer;
