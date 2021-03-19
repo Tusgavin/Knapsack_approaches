@@ -1,17 +1,11 @@
-#include <iostream>
-#include <vector>
-#include <utility>
-#include <fstream>
-#include <algorithm>
-#include <queue>
-#include <chrono>
-
 #include "utils.hpp"
 
 double knapsack_backtracking(
    double maximum_capacity,
    int amount_of_items,
-   std::vector<Item> weight_value_pairs
+   std::vector<Item> weight_value_pairs,
+   double best,
+   int index
 );
 
 int main(int argc, char *argv[])
@@ -27,17 +21,22 @@ int main(int argc, char *argv[])
 
    auto start_program = std::chrono::steady_clock::now();
 
-   double result = knapsack_backtracking(maximum_capacity, amount_of_items, weight_value_pairs);
+   double best = 0;
+   int index = 0;
+
+   double result = knapsack_backtracking(maximum_capacity,
+                                          amount_of_items,
+                                          weight_value_pairs,
+                                          best,
+                                          index
+                                       );
    auto end_program = std::chrono::steady_clock::now();
    auto diff = end_program - start_program;
 
-   std::cout << "Result is: " << result << std::endl;
    std::cout 
-      << "The test '" 
-      << file_name 
-      << "' took " 
-      << std::chrono::duration <double, std::milli>(diff).count() 
-      << " milliseconds." 
+      << "result: " << result << " " 
+      << "file: " << file_name << " "
+      << "time: " << std::chrono::duration <double, std::milli>(diff).count() 
       << std::endl;
 
    return 0;
@@ -46,62 +45,48 @@ int main(int argc, char *argv[])
 double knapsack_backtracking(
    double maximum_capacity,
    int amount_of_items,
-   std::vector<Item> weight_value_pairs
+   std::vector<Item> weight_value_pairs,
+   double best,
+   int index
 )
 {
-   std::queue<TreeNode> Tree;
-   TreeNode head;
-   TreeNode node_aux_1;
-   TreeNode node_aux_2;
-
-   head.level = -1;
-   head.accumulated_value = 0;
-   head.accumulated_weight = 0;
-
-   Tree.push(head);
-
-   double best = 0;
-   while (!Tree.empty())
+   // Se encher a mochila ou passar por todos os itens, chegamos a uma solução
+   if (maximum_capacity == 0 || index == amount_of_items - 1)
    {
-      node_aux_1 = Tree.front();
-      Tree.pop();
-
-      if (node_aux_1.level == amount_of_items - 1)
+      // Pode existir o caso em que estamos no ultimo item e ele cabe na mochila, então atualizamos o melhor valor
+      if (index == amount_of_items - 1 && maximum_capacity >= weight_value_pairs.at(index).weight)
       {
-         continue;
+         best += weight_value_pairs.at(index).value;
       }
-
-      // Situação 1: Colocando o item atual na mochila
-      // Atualizamos o level / item
-      node_aux_2.level = node_aux_1.level + 1;
-      // Atualizamos o peso com o item adicionado
-      node_aux_2.accumulated_weight = node_aux_1.accumulated_weight + weight_value_pairs.at(node_aux_2.level).weight;
-      // Atualizamos o valor com o item adicionado
-      node_aux_2.accumulated_value = node_aux_1.accumulated_value + weight_value_pairs.at(node_aux_2.level).value;
-
-      if (node_aux_2.accumulated_weight <= maximum_capacity && node_aux_2.accumulated_value > best)
-      {
-         best = node_aux_2.accumulated_value;
-      }
-
-      if (node_aux_2.accumulated_weight <= maximum_capacity) 
-      {
-         Tree.push(node_aux_2);
-      }
-
-      // Situação 2: Não colocando o item atual na mochila
-      // Peso permanece o mesmo
-      node_aux_2.accumulated_weight = node_aux_1.accumulated_weight;
-      // Valor permanece o mesmo
-      node_aux_2.accumulated_value = node_aux_1.accumulated_value;
-
-
-      if (node_aux_2.accumulated_weight <= maximum_capacity) 
-      {
-         Tree.push(node_aux_2);
-      }
-
+      return best;
    }
 
-   return best;
+   // Se a mochila não suporta o peso do item, consideramos apenas o caso de não inserção
+   else if (maximum_capacity < weight_value_pairs.at(index).weight)
+   {
+      return knapsack_backtracking(maximum_capacity, amount_of_items, weight_value_pairs, best, index + 1);
+   }
+   // Se a mochila suportar o item atual
+   else
+   {
+      // Existem duas novas soluções parciais
+      // Incluindo ou excluindo o item
+      double max_capacity_after_add_item = maximum_capacity - weight_value_pairs.at(index).weight;
+      double new_best_after_add_item_value = best + weight_value_pairs.at(index).value;
+      return std::max(knapsack_backtracking(
+                        max_capacity_after_add_item,
+                        amount_of_items,
+                        weight_value_pairs,
+                        new_best_after_add_item_value,
+                        index + 1
+                     ),
+                     knapsack_backtracking(
+                        maximum_capacity,
+                        amount_of_items,
+                        weight_value_pairs,
+                        best,
+                        index + 1
+                     )
+                  );
+   }
 }

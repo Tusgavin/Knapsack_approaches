@@ -1,11 +1,3 @@
-#include <iostream>
-#include <vector>
-#include <utility>
-#include <fstream>
-#include <algorithm>
-#include <queue>
-#include <chrono>
-
 #include "utils.hpp"
 
 double knapsack_branch_and_bound(
@@ -43,13 +35,10 @@ int main(int argc, char *argv[])
    auto end_program = std::chrono::steady_clock::now();
    auto diff = end_program - start_program;
 
-   std::cout << "Result is: " << result << std::endl;
    std::cout 
-      << "The test '" 
-      << file_name 
-      << "' took " 
-      << std::chrono::duration <double, std::milli>(diff).count() 
-      << " milliseconds." 
+      << "result: " << result << " " 
+      << "file: " << file_name << " "
+      << "time: " << std::chrono::duration <double, std::milli>(diff).count() 
       << std::endl;
 
    return 0;
@@ -91,15 +80,21 @@ double knapsack_branch_and_bound(
       // Atualizamos o valor com o item adicionado
       node_aux_2.accumulated_value = node_aux_1.accumulated_value + weight_value_pairs.at(node_aux_2.level).value;
 
+      // Se o peso estiver inferior à capacidade maxima e o melhor valor é superado, atualizamos melhor valor encontrado
       if (node_aux_2.accumulated_weight <= maximum_capacity && node_aux_2.accumulated_value > best)
       {
          best = node_aux_2.accumulated_value;
       }
 
-      node_aux_2.bound = get_node_bound(maximum_capacity, amount_of_items, weight_value_pairs, node_aux_2);
-      if (node_aux_2.bound > best)
+      // Se peso atual maior ou igual à capacidade maxima, não há possibilidade de inserção de mais itens na mochila
+      if (node_aux_2.accumulated_weight < maximum_capacity)
       {
-         Tree.push(node_aux_2);
+         // Se conseguimos adicionar mais itens, fazemos estimativa do lucro máximo
+         node_aux_2.bound = get_node_bound(maximum_capacity, amount_of_items, weight_value_pairs, node_aux_2);
+         if (node_aux_2.bound > best)
+         {
+            Tree.push(node_aux_2);
+         }
       }
 
       // Situação 2: Não colocando o item atual na mochila
@@ -108,16 +103,24 @@ double knapsack_branch_and_bound(
       // Valor permanece o mesmo
       node_aux_2.accumulated_value = node_aux_1.accumulated_value;
 
-      node_aux_2.bound = get_node_bound(maximum_capacity, amount_of_items, weight_value_pairs, node_aux_2);
-      if (node_aux_2.bound > best)
+      // Como não adicionamos nenhum item, o melhor valor encontrado não sofre alteração
+
+      // Se peso atual maior ou igual à capacidade maxima, não há possibilidade de inserção de mais itens na mochila
+      if (node_aux_2.accumulated_weight < maximum_capacity)
       {
-         Tree.push(node_aux_2);
+         // Se conseguimos adicionar mais itens, fazemos estimativa do lucro máximo
+         node_aux_2.bound = get_node_bound(maximum_capacity, amount_of_items, weight_value_pairs, node_aux_2);
+         if (node_aux_2.bound > best)
+         {
+            Tree.push(node_aux_2);
+         }
       }
    }
 
    return best;
 }
 
+// Função de estimativa de lucro
 double get_node_bound(
    double maximum_capacity,
    int amount_of_items,
@@ -125,31 +128,17 @@ double get_node_bound(
    TreeNode current
 )
 {
-   if (current.accumulated_weight >= maximum_capacity)
-   {
-      return 0;
-   }
-
    double upper_bound = current.accumulated_value;
    int next_item_index = current.level + 1;
    double total_weight = current.accumulated_weight;
 
-   while (
-      (next_item_index < amount_of_items) && 
-      (total_weight + weight_value_pairs.at(next_item_index).weight <= maximum_capacity)
-   )
-   {
-      total_weight += weight_value_pairs.at(next_item_index).weight;
-      upper_bound += weight_value_pairs.at(next_item_index).value;
-      ++next_item_index;
-   }
-
+   // Estimamos o lucro a partir do item i calculando (peso_maximo - peso_atual) frações do item (i + 1) que podemos adicionar
    if (next_item_index < amount_of_items)
    {
       upper_bound += 
          (maximum_capacity - total_weight) * 
-         weight_value_pairs.at(next_item_index).value /
-         weight_value_pairs.at(next_item_index).weight;
+         (weight_value_pairs.at(next_item_index).value /
+         weight_value_pairs.at(next_item_index).weight);
    }
 
    return upper_bound;
